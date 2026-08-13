@@ -198,5 +198,26 @@
   </div>
 
   <script src="script.js"></script>
+  <!-- Login Modal -->
+<div id="login-modal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 z-50 hidden">
+  <div class="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-w-sm shadow-xl text-center">
+    <div class="text-3xl mb-2">💎</div>
+    <h2 class="text-xl font-bold text-slate-100 mb-1">Welcome to Centible</h2>
+    <p class="text-xs text-slate-400 mb-6">Please sign in to access your finances.</p>
+    
+    <form id="login-form" onsubmit="handleLogin(event)" class="space-y-4 text-left">
+      <div>
+        <label class="block text-xs text-slate-400 mb-1">Email</label>
+        <input type="email" id="login-email" required class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-slate-100 text-sm focus:outline-none focus:border-emerald-500" placeholder="you@example.com">
+      </div>
+      <div>
+        <label class="block text-xs text-slate-400 mb-1">Password</label>
+        <input type="password" id="login-password" required class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-slate-100 text-sm focus:outline-none focus:border-emerald-500" placeholder="••••••••">
+      </div>
+      <p id="login-error" class="text-xs text-rose-400 hidden"></p>
+      <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-600 text-slate-950 font-semibold py-2.5 rounded-lg text-sm transition">Sign In</button>
+    </form>
+  </div>
+</div>
 </body>
 </html>

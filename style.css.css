@@ -1,0 +1,10 @@
+/* Fix mobile viewport bounce & padding for iOS Home Screen PWA */
+html, body {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Custom styling for sleek dark mode inputs */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}

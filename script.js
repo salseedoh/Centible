@@ -27,6 +27,18 @@ function changeMonth(delta) {
   calculateBudgetAndBalances(allTransactions);
 }
 
+// Helper to format clean UI labels: "Income:Salary:Pet Pampering Plus" -> "Income - Pet Pampering Plus"
+function formatAccountDisplay(acc) {
+  // Get capitalized account type (e.g., "asset" -> "Asset")
+  const typeDisplay = acc.type ? acc.type.charAt(0).toUpperCase() + acc.type.slice(1) : 'Account';
+  
+  // Extract final segment after the last colon if a full GnuCash path exists
+  const rawName = acc.name || '';
+  const cleanName = rawName.includes(':') ? rawName.split(':').pop().trim() : rawName.trim();
+  
+  return `${typeDisplay} - ${cleanName}`;
+}
+
 // Load Accounts into dropdowns & view
 async function loadAccounts() {
   const { data, error } = await db.from("accounts").select("*").order("name");
@@ -40,8 +52,11 @@ async function loadAccounts() {
   toSelect.innerHTML = "";
 
   accounts.forEach(acc => {
-    const opt1 = new Option(`${acc.name} (${acc.type})`, acc.id);
-    const opt2 = new Option(`${acc.name} (${acc.type})`, acc.id);
+    // Value remains the database ID, text gets the clean UI format
+    const label = formatAccountDisplay(acc);
+    const opt1 = new Option(label, acc.id);
+    const opt2 = new Option(label, acc.id);
+    
     fromSelect.add(opt1);
     toSelect.add(opt2);
   });

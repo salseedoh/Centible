@@ -331,37 +331,68 @@ async function handleDeleteAccount(id) {
 function openAccountModal() { document.getElementById("account-modal").classList.remove("hidden"); }
 function closeAccountModal() { document.getElementById("account-modal").classList.add("hidden"); }
 
-// Smart GnuCash CSV Export Function
+// Open Export Options Modal
 function exportCSV() {
   if (!allTransactions || allTransactions.length === 0) {
     return alert("No transactions available to export.");
   }
 
+  // Pre-fill dates: Start of current month to Today
+  const now = new Date();
+  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+  const today = now.toISOString().slice(0, 10);
+
+  document.getElementById("export-start-date").value = firstDay;
+  document.getElementById("export-end-date").value = today;
+
+  document.getElementById("export-modal").classList.remove("hidden");
+}
+
+function closeExportModal() {
+  document.getElementById("export-modal").classList.add("hidden");
+}
+
+function setExportPreset(preset) {
+  if (preset === 'all' && allTransactions.length > 0) {
+    // Find earliest and latest transaction dates
+    const dates = allTransactions.map(t => t.date).sort();
+    document.getElementById("export-start-date").value = dates[0];
+    document.getElementById("export-end-date").value = dates[dates.length - 1];
+  }
+}
+
+// Handle Form Submission and Generate CSV
+function handleExportSubmit(e) {
+  e.preventDefault();
+
+  const startDate = document.getElementById("export-start-date").value;
+  const endDate = document.getElementById("export-end-date").value;
+
+  // Filter transactions within selected range (inclusive)
+  const filteredTxs = allTransactions.filter(tx => tx.date >= startDate && tx.date <= endDate);
+
+  if (filteredTxs.length === 0) {
+    return alert(`No transactions found between ${startDate} and ${endDate}.`);
+  }
+
   // Standard GnuCash CSV Importer Header Columns
   const headers = ["Date", "Description", "Account", "Transfer Account", "Amount", "Notes"];
 
-  const rows = allTransactions.map(tx => {
-    // 1. Format date to MM/DD/YYYY (required by GnuCash)
+  const rows = filteredTxs.map(tx => {
     const d = new Date(tx.date + 'T00:00:00');
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
     const year = d.getFullYear();
     const formattedDate = `${month}/${day}/${year}`;
 
-    // 2. Fetch full account names and source account type
     const fromName = tx.from ? tx.from.name : "Unknown Account";
     const toName = tx.to ? tx.to.name : "Unknown Account";
     const fromType = tx.from ? tx.from.type : "";
 
-    // 3. Helper to escape double quotes for CSV safety
     const escape = (val) => `"${String(val || '').replace(/"/g, '""')}"`;
-
-    // 4. Description logic
     const description = tx.notes ? tx.notes : `${fromName} -> ${toName}`;
 
-    // 5. Smart Sign Adjustment:
-    // Liability (Credit Card) spending needs to be negative so GnuCash increases liability balance.
-    // Asset, Income, and Expense accounts remain positive.
+    // Smart Sign Adjustment
     const rawAmount = Math.abs(Number(tx.amount));
     const adjustedAmount = (fromType === 'liability') ? -rawAmount : rawAmount;
 
@@ -375,21 +406,21 @@ function exportCSV() {
     ].join(',');
   });
 
-  // Combine header and rows with standard CSV line breaks
   const csvContent = [headers.join(','), ...rows].join('\r\n');
 
-  // Trigger browser download
+  // Trigger download
   const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const link = document.createElement('a');
 
-  const today = new Date().toISOString().slice(0, 10);
   link.href = url;
-  link.setAttribute('download', `centible_gnucash_export_${today}.csv`);
+  link.setAttribute('download', `centible_export_${startDate}_to_${endDate}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+
+  closeExportModal();
 }
 
 function formatCurrency(num) {

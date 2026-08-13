@@ -331,7 +331,7 @@ async function handleDeleteAccount(id) {
 function openAccountModal() { document.getElementById("account-modal").classList.remove("hidden"); }
 function closeAccountModal() { document.getElementById("account-modal").classList.add("hidden"); }
 
-// GnuCash CSV Export Function
+// Smart GnuCash CSV Export Function
 function exportCSV() {
   if (!allTransactions || allTransactions.length === 0) {
     return alert("No transactions available to export.");
@@ -342,29 +342,35 @@ function exportCSV() {
 
   const rows = allTransactions.map(tx => {
     // 1. Format date to MM/DD/YYYY (required by GnuCash)
-    // Adding 'T00:00:00' prevents timezone shift bugs
     const d = new Date(tx.date + 'T00:00:00');
     const month = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
     const year = d.getFullYear();
     const formattedDate = `${month}/${day}/${year}`;
 
-    // 2. Fetch full account paths from database relations
+    // 2. Fetch full account names and source account type
     const fromName = tx.from ? tx.from.name : "Unknown Account";
     const toName = tx.to ? tx.to.name : "Unknown Account";
+    const fromType = tx.from ? tx.from.type : "";
 
-    // 3. Helper to escape double quotes and wrap in quotes for CSV safety
+    // 3. Helper to escape double quotes for CSV safety
     const escape = (val) => `"${String(val || '').replace(/"/g, '""')}"`;
 
-    // 4. Description logic: use notes if available, otherwise default to account transfer description
+    // 4. Description logic
     const description = tx.notes ? tx.notes : `${fromName} -> ${toName}`;
+
+    // 5. Smart Sign Adjustment:
+    // Liability (Credit Card) spending needs to be negative so GnuCash increases liability balance.
+    // Asset, Income, and Expense accounts remain positive.
+    const rawAmount = Math.abs(Number(tx.amount));
+    const adjustedAmount = (fromType === 'liability') ? -rawAmount : rawAmount;
 
     return [
       escape(formattedDate),
       escape(description),
       escape(fromName),
       escape(toName),
-      escape(Number(tx.amount).toFixed(2)),
+      escape(adjustedAmount.toFixed(2)),
       escape(tx.notes || '')
     ].join(',');
   });

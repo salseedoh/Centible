@@ -5,11 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Centible</title>
   
-  <!-- iOS Native App Meta Tags -->
+  <!-- Web App Meta Tags -->
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Centible">
-  <link rel="apple-touch-icon" href="https://img.icons8.com/emoji/192/wallet-emoji.png">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💎</text></svg>">
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💎</text></svg>">
   <link rel="manifest" href="manifest.json">
 
   <!-- Supabase CDN & Tailwind CSS -->
@@ -20,9 +22,14 @@
 <body class="bg-slate-900 text-slate-100 min-h-screen pb-24 font-sans antialiased">
 
   <!-- Header -->
-  <header class="pt-12 pb-4 px-4 bg-slate-800/80 backdrop-blur sticky top-0 z-10 border-b border-slate-700/50 flex justify-between items-center">
+  <header class="pt-12 pb-4 px-4 bg-slate-800/80 backdrop-blur sticky top-0 z-10 border-b border-slate-700/50 flex justify-between items-center max-w-md mx-auto">
     <h1 class="text-xl font-bold tracking-tight text-emerald-400">💎 Centible</h1>
-    <span class="text-xs text-slate-400 bg-slate-700/50 px-2.5 py-1 rounded-full" id="current-month"></span>
+    <div class="flex items-center gap-2">
+      <span class="text-xs text-slate-400 bg-slate-700/50 px-2.5 py-1 rounded-full" id="current-month"></span>
+      <button onclick="openAccountModal()" class="text-xs bg-slate-700 hover:bg-slate-600 active:scale-95 text-slate-200 px-3 py-1 rounded-full font-semibold transition border border-slate-600">
+        ⚙️ Accounts
+      </button>
+    </div>
   </header>
 
   <main class="max-w-md mx-auto p-4 space-y-6">
@@ -44,7 +51,7 @@
     </div>
 
     <!-- Quick Action -->
-    <button onclick="openModal()" class="w-full bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-slate-950 font-bold py-3.5 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2">
+    <button onclick="openTxModal()" class="w-full bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-slate-950 font-bold py-3.5 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2">
       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
       New Transaction
     </button>
@@ -67,12 +74,12 @@
 
   </main>
 
-  <!-- Modal: Add New Transaction -->
-  <div id="modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+  <!-- Modal 1: Add New Transaction -->
+  <div id="tx-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
     <div class="bg-slate-800 w-full max-w-md rounded-t-3xl sm:rounded-2xl p-6 border border-slate-700 space-y-4 shadow-2xl">
       <div class="flex justify-between items-center">
         <h3 class="text-lg font-bold">New Transaction</h3>
-        <button onclick="closeModal()" class="text-slate-400 hover:text-white text-xl font-bold">&times;</button>
+        <button onclick="closeTxModal()" class="text-slate-400 hover:text-white text-xl font-bold">&times;</button>
       </div>
 
       <form id="tx-form" onsubmit="handleSaveTransaction(event)" class="space-y-4">
@@ -99,6 +106,42 @@
 
         <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-slate-950 font-bold py-3.5 rounded-xl transition mt-2">Save Transaction</button>
       </form>
+    </div>
+  </div>
+
+  <!-- Modal 2: Manage Accounts & Budgets -->
+  <div id="account-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
+    <div class="bg-slate-800 w-full max-w-md rounded-t-3xl sm:rounded-2xl p-6 border border-slate-700 space-y-4 shadow-2xl max-h-[85vh] overflow-y-auto">
+      <div class="flex justify-between items-center">
+        <h3 class="text-lg font-bold">Manage Accounts & Budgets</h3>
+        <button onclick="closeAccountModal()" class="text-slate-400 hover:text-white text-xl font-bold">&times;</button>
+      </div>
+
+      <!-- Add Account Form -->
+      <form id="acc-form" onsubmit="handleSaveAccount(event)" class="bg-slate-900 p-4 rounded-xl space-y-3 border border-slate-700">
+        <h4 class="text-xs font-bold text-emerald-400 uppercase tracking-wider">Add New Account</h4>
+        <div>
+          <input type="text" id="acc-name" placeholder="Account Name (e.g. Dining Out, Savings)" required class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white outline-none">
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <select id="acc-type" required class="bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white outline-none">
+            <option value="expense">Expense</option>
+            <option value="income">Income</option>
+            <option value="asset">Asset</option>
+            <option value="liability">Liability</option>
+          </select>
+          <input type="number" step="0.01" id="acc-budget" placeholder="Monthly Budget ($)" class="bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white outline-none">
+        </div>
+        <button type="submit" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2 rounded-lg text-sm transition">Add Account</button>
+      </form>
+
+      <!-- Account List -->
+      <div class="space-y-2">
+        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Existing Accounts</h4>
+        <div id="account-manage-list" class="divide-y divide-slate-700/50">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
     </div>
   </div>
 

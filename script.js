@@ -17,7 +17,7 @@ document.addEventListener("DOMContentLoaded", () => {
   loadDashboardData();
 });
 
-// Load Accounts into dropdowns
+// Load Accounts into dropdowns & manage view
 async function loadAccounts() {
   const { data, error } = await db.from("accounts").select("*").order("name");
   if (error) return console.error(error);
@@ -35,6 +35,82 @@ async function loadAccounts() {
     fromSelect.add(opt1);
     toSelect.add(opt2);
   });
+
+  renderAccountManageList();
+}
+
+// Render list inside Manage Accounts Modal
+function renderAccountManageList() {
+  const container = document.getElementById("account-manage-list");
+  container.innerHTML = "";
+
+  accounts.forEach(acc => {
+    const item = document.createElement("div");
+    item.className = "py-3 flex justify-between items-center text-sm";
+    item.innerHTML = `
+      <div class="flex-1 pr-2">
+        <div class="font-semibold text-slate-200">${acc.name}</div>
+        <div class="text-xs text-slate-400 uppercase tracking-wider">${acc.type} • Budget: ${formatCurrency(acc.budget_monthly || 0)}</div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="promptEditBudget('${acc.id}', '${acc.name}', ${acc.budget_monthly || 0})" class="text-xs bg-slate-700 hover:bg-slate-600 px-2.5 py-1 rounded text-slate-300">
+          Edit Budget
+        </button>
+        <button onclick="handleDeleteAccount('${acc.id}')" class="text-xs bg-rose-900/50 hover:bg-rose-800 text-rose-300 px-2.5 py-1 rounded">
+          Delete
+        </button>
+      </div>
+    `;
+    container.appendChild(item);
+  });
+}
+
+// Save New Account
+async function handleSaveAccount(e) {
+  e.preventDefault();
+  const name = document.getElementById("acc-name").value.trim();
+  const type = document.getElementById("acc-type").value;
+  const budget_monthly = parseFloat(document.getElementById("acc-budget").value) || 0;
+
+  const { error } = await db.from("accounts").insert([{ name, type, budget_monthly }]);
+
+  if (error) {
+    alert("Error adding account: " + error.message);
+  } else {
+    document.getElementById("acc-form").reset();
+    await loadAccounts();
+    loadDashboardData();
+  }
+}
+
+// Edit Account Budget
+async function promptEditBudget(id, name, currentBudget) {
+  const newBudget = prompt(`Set new monthly budget for "${name}":`, currentBudget);
+  if (newBudget !== null) {
+    const parsed = parseFloat(newBudget);
+    if (isNaN(parsed)) return alert("Please enter a valid number");
+
+    const { error } = await db.from("accounts").update({ budget_monthly: parsed }).eq("id", id);
+    if (error) {
+      alert("Error updating budget: " + error.message);
+    } else {
+      await loadAccounts();
+      loadDashboardData();
+    }
+  }
+}
+
+// Delete Account
+async function handleDeleteAccount(id) {
+  if (confirm("Are you sure you want to delete this account? Transactions linked to it will also be removed.")) {
+    const { error } = await db.from("accounts").delete().eq("id", id);
+    if (error) {
+      alert("Error deleting account: " + error.message);
+    } else {
+      await loadAccounts();
+      loadDashboardData();
+    }
+  }
 }
 
 // Load Dashboard, Balances, & Budgets
@@ -55,13 +131,10 @@ function calculateBudgetAndBalances(txs) {
 
   txs.forEach(tx => {
     const amount = parseFloat(tx.amount);
-    
-    // Balance Tracking
     if (balances[tx.from_account_id] !== undefined) balances[tx.from_account_id] -= amount;
     if (balances[tx.to_account_id] !== undefined) balances[tx.to_account_id] += amount;
   });
 
-  // Calculate Net Worth totals
   let totalAssets = 0;
   let totalLiabilities = 0;
 
@@ -75,7 +148,6 @@ function calculateBudgetAndBalances(txs) {
   document.getElementById("total-assets").innerText = formatCurrency(totalAssets);
   document.getElementById("total-liabilities").innerText = formatCurrency(totalLiabilities);
 
-  // Render Monthly Budget Progress
   renderBudgets(txs, currentMonth, currentYear);
 }
 
@@ -83,11 +155,14 @@ function renderBudgets(txs, month, year) {
   const budgetContainer = document.getElementById("budget-list");
   budgetContainer.innerHTML = "";
 
-  // Filter accounts with monthly budgets set
   const budgetedAccounts = accounts.filter(a => parseFloat(a.budget_monthly) > 0);
 
+  if (budgetedAccounts.length === 0) {
+    budgetContainer.innerHTML = `<div class="p-4 text-center text-slate-500 text-sm bg-slate-800 rounded-xl border border-slate-700">No monthly budgets set yet. Click "⚙️ Accounts" to set one up!</div>`;
+    return;
+  }
+
   budgetedAccounts.forEach(acc => {
-    // Sum relevant transactions for current month
     const monthlySpent = txs.reduce((sum, tx) => {
       const txDate = new Date(tx.date);
       if (txDate.getMonth() === month && txDate.getFullYear() === year) {
@@ -141,7 +216,7 @@ function renderTransactions(txs) {
   });
 }
 
-// Form Submission
+// Transaction Modal Logic
 async function handleSaveTransaction(e) {
   e.preventDefault();
 
@@ -155,15 +230,18 @@ async function handleSaveTransaction(e) {
   if (error) {
     alert("Error saving transaction: " + error.message);
   } else {
-    closeModal();
+    closeTxModal();
     document.getElementById("tx-form").reset();
     document.getElementById("tx-date").valueAsDate = new Date();
     loadDashboardData();
   }
 }
 
-function openModal() { document.getElementById("modal").classList.remove("hidden"); }
-function closeModal() { document.getElementById("modal").classList.add("hidden"); }
+function openTxModal() { document.getElementById("tx-modal").classList.remove("hidden"); }
+function closeTxModal() { document.getElementById("tx-modal").classList.add("hidden"); }
+
+function openAccountModal() { document.getElementById("account-modal").classList.remove("hidden"); }
+function closeAccountModal() { document.getElementById("account-modal").classList.add("hidden"); }
 
 function formatCurrency(num) {
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(num);

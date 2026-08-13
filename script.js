@@ -331,26 +331,59 @@ async function handleDeleteAccount(id) {
 function openAccountModal() { document.getElementById("account-modal").classList.remove("hidden"); }
 function closeAccountModal() { document.getElementById("account-modal").classList.add("hidden"); }
 
-// CSV Export
+// GnuCash CSV Export Function
 function exportCSV() {
-  if (allTransactions.length === 0) return alert("No transactions available to export.");
+  if (!allTransactions || allTransactions.length === 0) {
+    return alert("No transactions available to export.");
+  }
 
-  let csvContent = "data:text/csv;charset=utf-8,Date,From Account,To Account,Amount,Notes\n";
+  // Standard GnuCash CSV Importer Header Columns
+  const headers = ["Date", "Description", "Account", "Transfer Account", "Amount", "Notes"];
 
-  allTransactions.forEach(tx => {
-    const fromName = tx.from ? tx.from.name : "Unknown";
-    const toName = tx.to ? tx.to.name : "Unknown";
-    const notes = tx.notes ? `"${tx.notes.replace(/"/g, '""')}"` : "";
-    csvContent += `${tx.date},"${fromName}","${toName}",${tx.amount},${notes}\n`;
+  const rows = allTransactions.map(tx => {
+    // 1. Format date to MM/DD/YYYY (required by GnuCash)
+    // Adding 'T00:00:00' prevents timezone shift bugs
+    const d = new Date(tx.date + 'T00:00:00');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const year = d.getFullYear();
+    const formattedDate = `${month}/${day}/${year}`;
+
+    // 2. Fetch full account paths from database relations
+    const fromName = tx.from ? tx.from.name : "Unknown Account";
+    const toName = tx.to ? tx.to.name : "Unknown Account";
+
+    // 3. Helper to escape double quotes and wrap in quotes for CSV safety
+    const escape = (val) => `"${String(val || '').replace(/"/g, '""')}"`;
+
+    // 4. Description logic: use notes if available, otherwise default to account transfer description
+    const description = tx.notes ? tx.notes : `${fromName} -> ${toName}`;
+
+    return [
+      escape(formattedDate),
+      escape(description),
+      escape(fromName),
+      escape(toName),
+      escape(Number(tx.amount).toFixed(2)),
+      escape(tx.notes || '')
+    ].join(',');
   });
 
-  const encodedUri = encodeURI(csvContent);
-  const link = document.createElement("a");
-  link.setAttribute("href", encodedUri);
-  link.setAttribute("download", `centible_export_${new Date().toISOString().slice(0,10)}.csv`);
+  // Combine header and rows with standard CSV line breaks
+  const csvContent = [headers.join(','), ...rows].join('\r\n');
+
+  // Trigger browser download
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+
+  const today = new Date().toISOString().slice(0, 10);
+  link.href = url;
+  link.setAttribute('download', `centible_gnucash_export_${today}.csv`);
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+  URL.revokeObjectURL(url);
 }
 
 function formatCurrency(num) {

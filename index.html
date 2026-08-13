@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Centible</title>
   
-  <!-- Web App Meta Tags -->
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -14,7 +13,6 @@
   <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💎</text></svg>">
   <link rel="manifest" href="manifest.json">
 
-  <!-- Supabase CDN & Tailwind CSS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="style.css">
@@ -25,16 +23,32 @@
   <header class="pt-12 pb-4 px-4 bg-slate-800/80 backdrop-blur sticky top-0 z-10 border-b border-slate-700/50 flex justify-between items-center max-w-md mx-auto">
     <h1 class="text-xl font-bold tracking-tight text-emerald-400">💎 Centible</h1>
     <div class="flex items-center gap-2">
-      <span class="text-xs text-slate-400 bg-slate-700/50 px-2.5 py-1 rounded-full" id="current-month"></span>
-      <button onclick="openAccountModal()" class="text-xs bg-slate-700 hover:bg-slate-600 active:scale-95 text-slate-200 px-3 py-1 rounded-full font-semibold transition border border-slate-600">
-        ⚙️ Accounts
-      </button>
+      <button onclick="exportCSV()" class="text-xs bg-slate-700/60 hover:bg-slate-600 text-slate-300 px-2.5 py-1 rounded-full border border-slate-600" title="Export CSV">📥 Export</button>
+      <button onclick="openAccountModal()" class="text-xs bg-slate-700 hover:bg-slate-600 active:scale-95 text-slate-200 px-3 py-1 rounded-full font-semibold transition border border-slate-600">⚙️ Accounts</button>
     </div>
   </header>
 
-  <main class="max-w-md mx-auto p-4 space-y-6">
+  <main class="max-w-md mx-auto p-4 space-y-5">
 
-    <!-- Net Worth Summary Card -->
+    <!-- Date / Month Selector Navigation -->
+    <div class="flex justify-between items-center bg-slate-800/50 p-2 rounded-xl border border-slate-700/50">
+      <button onclick="changeMonth(-1)" class="p-1.5 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-white">&larr; Prev</button>
+      <span class="text-sm font-bold text-slate-200" id="current-month-display"></span>
+      <button onclick="changeMonth(1)" class="p-1.5 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-white">Next &rarr;</button>
+    </div>
+
+    <!-- Quick Presets -->
+    <div class="space-y-1.5">
+      <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400">Quick Shortcuts</p>
+      <div class="grid grid-cols-4 gap-2 text-xs">
+        <button onclick="quickPreset('paycheck')" class="bg-slate-800 hover:bg-slate-700 p-2.5 rounded-xl border border-slate-700 text-center font-medium">💵 Paycheck</button>
+        <button onclick="quickPreset('groceries')" class="bg-slate-800 hover:bg-slate-700 p-2.5 rounded-xl border border-slate-700 text-center font-medium">🛒 Food</button>
+        <button onclick="quickPreset('coffee')" class="bg-slate-800 hover:bg-slate-700 p-2.5 rounded-xl border border-slate-700 text-center font-medium">☕ Coffee</button>
+        <button onclick="quickPreset('gas')" class="bg-slate-800 hover:bg-slate-700 p-2.5 rounded-xl border border-slate-700 text-center font-medium">⛽ Fuel</button>
+      </div>
+    </div>
+
+    <!-- Net Worth Summary -->
     <div class="bg-slate-800 p-5 rounded-2xl border border-slate-700 shadow-lg">
       <p class="text-xs text-slate-400 uppercase tracking-wider font-semibold">Estimated Net Worth</p>
       <h2 class="text-3xl font-extrabold mt-1 text-white" id="net-worth">$0.00</h2>
@@ -50,7 +64,7 @@
       </div>
     </div>
 
-    <!-- Quick Action -->
+    <!-- Quick Action Button -->
     <button onclick="openTxModal()" class="w-full bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-slate-950 font-bold py-3.5 px-4 rounded-xl shadow-md transition flex items-center justify-center gap-2">
       <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
       New Transaction
@@ -58,53 +72,62 @@
 
     <!-- Monthly Budget Overview -->
     <section>
-      <h3 class="text-lg font-bold mb-3 text-slate-200">Monthly Budget</h3>
-      <div class="space-y-3" id="budget-list">
-        <!-- Budget bars load dynamically -->
-      </div>
+      <h3 class="text-base font-bold mb-3 text-slate-200">Monthly Budget Status</h3>
+      <div class="space-y-3" id="budget-list"></div>
     </section>
 
-    <!-- Recent Transactions -->
+    <!-- Recent Transactions & Search -->
     <section>
-      <h3 class="text-lg font-bold mb-3 text-slate-200">Recent Activity</h3>
-      <div class="bg-slate-800 rounded-2xl border border-slate-700 divide-y divide-slate-700/50" id="transaction-list">
-        <!-- Transactions load dynamically -->
+      <div class="flex justify-between items-center mb-3">
+        <h3 class="text-base font-bold text-slate-200">Activity</h3>
+        <input type="text" id="search-input" oninput="handleSearch()" placeholder="Search transactions..." class="bg-slate-800 border border-slate-700 text-xs text-white rounded-lg px-2.5 py-1 outline-none w-40 focus:ring-1 focus:ring-emerald-500">
       </div>
+      <div class="bg-slate-800 rounded-2xl border border-slate-700 divide-y divide-slate-700/50" id="transaction-list"></div>
     </section>
 
   </main>
 
-  <!-- Modal 1: Add New Transaction -->
+  <!-- Modal 1: New / Edit Transaction -->
   <div id="tx-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-end sm:items-center justify-center p-0 sm:p-4">
     <div class="bg-slate-800 w-full max-w-md rounded-t-3xl sm:rounded-2xl p-6 border border-slate-700 space-y-4 shadow-2xl">
       <div class="flex justify-between items-center">
-        <h3 class="text-lg font-bold">New Transaction</h3>
+        <h3 class="text-lg font-bold" id="tx-modal-title">New Transaction</h3>
         <button onclick="closeTxModal()" class="text-slate-400 hover:text-white text-xl font-bold">&times;</button>
       </div>
 
       <form id="tx-form" onsubmit="handleSaveTransaction(event)" class="space-y-4">
+        <input type="hidden" id="tx-id">
+
         <div>
           <label class="block text-xs font-semibold text-slate-400 mb-1">From Account (Source)</label>
-          <select id="from-account" required class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm focus:ring-2 focus:ring-emerald-500 text-white outline-none"></select>
+          <select id="from-account" required class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-white outline-none focus:ring-2 focus:ring-emerald-500"></select>
         </div>
 
         <div>
           <label class="block text-xs font-semibold text-slate-400 mb-1">To Account (Destination)</label>
-          <select id="to-account" required class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm focus:ring-2 focus:ring-emerald-500 text-white outline-none"></select>
+          <select id="to-account" required class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-white outline-none focus:ring-2 focus:ring-emerald-500"></select>
         </div>
 
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="block text-xs font-semibold text-slate-400 mb-1">Amount ($)</label>
-            <input type="number" step="0.01" id="amount" placeholder="0.00" required class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm focus:ring-2 focus:ring-emerald-500 text-white outline-none">
+            <input type="number" step="0.01" id="amount" placeholder="0.00" required class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-white outline-none focus:ring-2 focus:ring-emerald-500">
           </div>
           <div>
             <label class="block text-xs font-semibold text-slate-400 mb-1">Date</label>
-            <input type="date" id="tx-date" required class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm focus:ring-2 focus:ring-emerald-500 text-white outline-none">
+            <input type="date" id="tx-date" required class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-white outline-none focus:ring-2 focus:ring-emerald-500">
           </div>
         </div>
 
-        <button type="submit" class="w-full bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-slate-950 font-bold py-3.5 rounded-xl transition mt-2">Save Transaction</button>
+        <div>
+          <label class="block text-xs font-semibold text-slate-400 mb-1">Notes (Optional)</label>
+          <input type="text" id="tx-notes" placeholder="e.g. Target run, Monthly bonus" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-white outline-none focus:ring-2 focus:ring-emerald-500">
+        </div>
+
+        <div class="flex gap-2 pt-2">
+          <button type="button" id="delete-tx-btn" onclick="handleDeleteTransaction()" class="hidden w-1/3 bg-rose-900/40 hover:bg-rose-800 text-rose-300 font-bold py-3.5 rounded-xl transition">Delete</button>
+          <button type="submit" class="flex-1 bg-emerald-500 hover:bg-emerald-600 active:scale-95 text-slate-950 font-bold py-3.5 rounded-xl transition">Save</button>
+        </div>
       </form>
     </div>
   </div>
@@ -117,11 +140,10 @@
         <button onclick="closeAccountModal()" class="text-slate-400 hover:text-white text-xl font-bold">&times;</button>
       </div>
 
-      <!-- Add Account Form -->
       <form id="acc-form" onsubmit="handleSaveAccount(event)" class="bg-slate-900 p-4 rounded-xl space-y-3 border border-slate-700">
         <h4 class="text-xs font-bold text-emerald-400 uppercase tracking-wider">Add New Account</h4>
         <div>
-          <input type="text" id="acc-name" placeholder="Account Name (e.g. Dining Out, Savings)" required class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white outline-none">
+          <input type="text" id="acc-name" placeholder="Account Name (e.g. Dining, Savings)" required class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white outline-none">
         </div>
         <div class="grid grid-cols-2 gap-2">
           <select id="acc-type" required class="bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white outline-none">
@@ -130,17 +152,14 @@
             <option value="asset">Asset</option>
             <option value="liability">Liability</option>
           </select>
-          <input type="number" step="0.01" id="acc-budget" placeholder="Monthly Budget ($)" class="bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white outline-none">
+          <input type="number" step="0.01" id="acc-budget" placeholder="Monthly Target ($)" class="bg-slate-800 border border-slate-700 rounded-lg p-2.5 text-sm text-white outline-none">
         </div>
         <button type="submit" class="w-full bg-slate-700 hover:bg-slate-600 text-white font-semibold py-2 rounded-lg text-sm transition">Add Account</button>
       </form>
 
-      <!-- Account List -->
       <div class="space-y-2">
         <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Existing Accounts</h4>
-        <div id="account-manage-list" class="divide-y divide-slate-700/50">
-          <!-- Populated dynamically -->
-        </div>
+        <div id="account-manage-list" class="divide-y divide-slate-700/50"></div>
       </div>
     </div>
   </div>

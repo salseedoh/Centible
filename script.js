@@ -8,13 +8,50 @@ let accounts = [];
 let allTransactions = [];
 let selectedDate = new Date();
 
-// Initialize
-document.addEventListener("DOMContentLoaded", () => {
+// Initialize with Auth Check
+document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("tx-date").valueAsDate = new Date();
   updateMonthDisplay();
-  loadAccounts();
-  loadDashboardData();
+
+  // Check if user is logged in
+  const { data: { session } } = await db.auth.getSession();
+  
+  if (!session) {
+    document.getElementById("login-modal").classList.remove("hidden");
+  } else {
+    loadAccounts();
+    loadDashboardData();
+  }
 });
+
+// Auth Handlers
+async function handleLogin(e) {
+  e.preventDefault();
+  const email = document.getElementById("login-email").value;
+  const password = document.getElementById("login-password").value;
+  const errorMsg = document.getElementById("login-error");
+
+  errorMsg.classList.add("hidden");
+
+  const { data, error } = await db.auth.signInWithPassword({
+    email: email,
+    password: password,
+  });
+
+  if (error) {
+    errorMsg.innerText = error.message;
+    errorMsg.classList.remove("hidden");
+  } else {
+    document.getElementById("login-modal").classList.add("hidden");
+    loadAccounts();
+    loadDashboardData();
+  }
+}
+
+async function handleLogout() {
+  await db.auth.signOut();
+  window.location.reload();
+}
 
 // Month Filter Navigation
 function updateMonthDisplay() {

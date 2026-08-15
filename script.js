@@ -8,6 +8,8 @@ let accounts = [];
 let allTransactions = [];
 let selectedDate = new Date();
 
+const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]));
+
 // Initialize with Auth Check
 document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("tx-date").valueAsDate = new Date();
@@ -19,8 +21,8 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (!session) {
     document.getElementById("login-modal").classList.remove("hidden");
   } else {
-    loadAccounts();
-    loadDashboardData();
+    await loadAccounts();
+    await loadDashboardData();
   }
 });
 
@@ -43,8 +45,8 @@ async function handleLogin(e) {
     errorMsg.classList.remove("hidden");
   } else {
     document.getElementById("login-modal").classList.add("hidden");
-    loadAccounts();
-    loadDashboardData();
+    await loadAccounts();
+    await loadDashboardData();
   }
 }
 
@@ -110,14 +112,16 @@ function renderAccountManageList() {
     item.className = "py-3 flex justify-between items-center text-sm";
     item.innerHTML = `
       <div class="flex-1 pr-2">
-        <div class="font-semibold text-slate-200">${acc.name}</div>
-        <div class="text-xs text-slate-400 uppercase tracking-wider">${acc.type} • Budget: ${formatCurrency(acc.budget_monthly || 0)}</div>
+        <div class="font-semibold text-slate-200">${escapeHtml(acc.name)}</div>
+        <div class="text-xs text-slate-400 uppercase tracking-wider">${escapeHtml(acc.type)} • Budget: ${formatCurrency(acc.budget_monthly || 0)}</div>
       </div>
       <div class="flex items-center gap-2">
-        <button onclick="promptEditBudget('${acc.id}', '${acc.name}', ${acc.budget_monthly || 0})" class="text-xs bg-slate-700 hover:bg-slate-600 px-2.5 py-1 rounded text-slate-300">Edit</button>
-        <button onclick="handleDeleteAccount('${acc.id}')" class="text-xs bg-rose-900/50 hover:bg-rose-800 text-rose-300 px-2.5 py-1 rounded">Delete</button>
+        <button type="button" class="edit-account text-xs bg-slate-700 hover:bg-slate-600 px-2.5 py-1 rounded text-slate-300">Edit</button>
+        <button type="button" class="delete-account text-xs bg-rose-900/50 hover:bg-rose-800 text-rose-300 px-2.5 py-1 rounded">Delete</button>
       </div>
     `;
+    item.querySelector(".edit-account").addEventListener("click", () => promptEditBudget(acc.id, acc.name, acc.budget_monthly || 0));
+    item.querySelector(".delete-account").addEventListener("click", () => handleDeleteAccount(acc.id));
     container.appendChild(item);
   });
 }
@@ -190,7 +194,7 @@ function renderBudgets(txs, month, year) {
     card.className = "bg-slate-800 p-4 rounded-xl border border-slate-700/70";
     card.innerHTML = `
       <div class="flex justify-between text-sm mb-1 font-medium">
-        <span>${acc.name}</span>
+        <span>${escapeHtml(acc.name)}</span>
         <span class="${isOver ? 'text-rose-400 font-bold' : 'text-slate-300'}">
           ${formatCurrency(monthlySpent)} / ${formatCurrency(target)}
         </span>
@@ -217,10 +221,13 @@ function renderTransactions(txs) {
     const item = document.createElement("div");
     item.className = "p-3.5 flex justify-between items-center text-sm hover:bg-slate-700/30 cursor-pointer active:bg-slate-700/50 transition";
     item.onclick = () => openEditTxModal(tx);
+    const fromName = tx.from ? tx.from.name : "Unknown";
+    const toName = tx.to ? tx.to.name : "Unknown";
+    const notes = tx.notes ? `• <span class="italic text-slate-300">${escapeHtml(tx.notes)}</span>` : "";
     item.innerHTML = `
       <div>
-        <p class="font-semibold text-slate-200">${tx.from ? tx.from.name : 'Unknown'} → ${tx.to ? tx.to.name : 'Unknown'}</p>
-        <p class="text-xs text-slate-400">${tx.date} ${tx.notes ? `• <span class="italic text-slate-300">${tx.notes}</span>` : ''}</p>
+        <p class="font-semibold text-slate-200">${escapeHtml(fromName)} → ${escapeHtml(toName)}</p>
+        <p class="text-xs text-slate-400">${escapeHtml(tx.date)} ${notes}</p>
       </div>
       <span class="font-bold text-emerald-400">${formatCurrency(tx.amount)}</span>
     `;
@@ -276,6 +283,9 @@ async function handleSaveTransaction(e) {
   const amount = parseFloat(document.getElementById("amount").value);
   const date = document.getElementById("tx-date").value;
   const notes = document.getElementById("tx-notes").value.trim();
+
+  if (from_account_id === to_account_id) return alert("Choose two different accounts.");
+  if (!Number.isFinite(amount) || amount <= 0) return alert("Enter an amount greater than zero.");
 
   const payload = { from_account_id, to_account_id, amount, date, notes };
 

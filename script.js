@@ -115,8 +115,8 @@ async function loadAccounts() {
     const label = formatAccountDisplay(acc);
     const fromOption = new Option(label);
     const toOption = new Option(label);
-    fromOptions.add(fromOption);
-    toOptions.add(toOption);
+    fromOptions.appendChild(fromOption);
+    toOptions.appendChild(toOption);
   });
 
   renderAccountManageList();

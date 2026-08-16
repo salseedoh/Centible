@@ -15,6 +15,12 @@ document.addEventListener("DOMContentLoaded", async () => {
   document.getElementById("tx-date").valueAsDate = new Date();
   updateMonthDisplay();
 
+  ["from", "to"].forEach(field => {
+    const input = document.getElementById(`${field}-account`);
+    input.addEventListener("input", () => syncAccountField(field));
+    input.addEventListener("change", () => syncAccountField(field));
+  });
+
   // Check if user is logged in
   const { data: { session } } = await db.auth.getSession();
   
@@ -78,26 +84,39 @@ function formatAccountDisplay(acc) {
   return `${typeDisplay} - ${cleanName}`;
 }
 
+function findAccountByLabel(value) {
+  const normalized = value.trim().toLowerCase();
+  return accounts.find(account => formatAccountDisplay(account).toLowerCase() === normalized) || null;
+}
+
+function setAccountField(field, account) {
+  document.getElementById(`${field}-account`).value = formatAccountDisplay(account);
+  document.getElementById(`${field}-account-id`).value = account.id;
+}
+
+function syncAccountField(field) {
+  const account = findAccountByLabel(document.getElementById(`${field}-account`).value);
+  document.getElementById(`${field}-account-id`).value = account ? account.id : "";
+}
+
 // Load Accounts into dropdowns & view
 async function loadAccounts() {
   const { data, error } = await db.from("accounts").select("*").order("name");
   if (error) return console.error(error);
   
   accounts = data;
-  const fromSelect = document.getElementById("from-account");
-  const toSelect = document.getElementById("to-account");
+  const fromOptions = document.getElementById("from-account-options");
+  const toOptions = document.getElementById("to-account-options");
 
-  fromSelect.innerHTML = "";
-  toSelect.innerHTML = "";
+  fromOptions.innerHTML = "";
+  toOptions.innerHTML = "";
 
   accounts.forEach(acc => {
-    // Value remains the database ID, text gets the clean UI format
     const label = formatAccountDisplay(acc);
-    const opt1 = new Option(label, acc.id);
-    const opt2 = new Option(label, acc.id);
-    
-    fromSelect.add(opt1);
-    toSelect.add(opt2);
+    const fromOption = new Option(label);
+    const toOption = new Option(label);
+    fromOptions.appendChild(fromOption);
+    toOptions.appendChild(toOption);
   });
 
   renderAccountManageList();
@@ -249,27 +268,25 @@ function handleSearch() {
 // Quick Preset Actions
 function quickPreset(type) {
   openTxModal();
-  const fromSelect = document.getElementById("from-account");
-  const toSelect = document.getElementById("to-account");
 
   if (type === 'paycheck') {
     const incomeAcc = accounts.find(a => a.type === 'income');
     const assetAcc = accounts.find(a => a.type === 'asset');
-    if (incomeAcc) fromSelect.value = incomeAcc.id;
-    if (assetAcc) toSelect.value = assetAcc.id;
+    if (incomeAcc) setAccountField("from", incomeAcc);
+    if (assetAcc) setAccountField("to", assetAcc);
     document.getElementById("tx-notes").value = "Paycheck";
   } else if (type === 'coffee') {
     const assetAcc = accounts.find(a => a.type === 'asset') || accounts.find(a => a.type === 'liability');
     const coffeeAcc = accounts.find(a => a.name.toLowerCase().includes('coffee')) || accounts.find(a => a.type === 'expense');
-    if (assetAcc) fromSelect.value = assetAcc.id;
-    if (coffeeAcc) toSelect.value = coffeeAcc.id;
+    if (assetAcc) setAccountField("from", assetAcc);
+    if (coffeeAcc) setAccountField("to", coffeeAcc);
     document.getElementById("amount").value = "5.00";
     document.getElementById("tx-notes").value = "Coffee run";
   } else if (type === 'groceries' || type === 'gas') {
     const assetAcc = accounts.find(a => a.type === 'asset') || accounts.find(a => a.type === 'liability');
     const expAcc = accounts.find(a => a.name.toLowerCase().includes(type)) || accounts.find(a => a.type === 'expense');
-    if (assetAcc) fromSelect.value = assetAcc.id;
-    if (expAcc) toSelect.value = expAcc.id;
+    if (assetAcc) setAccountField("from", assetAcc);
+    if (expAcc) setAccountField("to", expAcc);
   }
 }
 
@@ -278,16 +295,17 @@ async function handleSaveTransaction(e) {
   e.preventDefault();
 
   const id = document.getElementById("tx-id").value;
-  const from_account_id = document.getElementById("from-account").value;
-  const to_account_id = document.getElementById("to-account").value;
+  const fromAccount = findAccountByLabel(document.getElementById("from-account").value);
+  const toAccount = findAccountByLabel(document.getElementById("to-account").value);
   const amount = parseFloat(document.getElementById("amount").value);
   const date = document.getElementById("tx-date").value;
   const notes = document.getElementById("tx-notes").value.trim();
 
-  if (from_account_id === to_account_id) return alert("Choose two different accounts.");
+  if (!fromAccount || !toAccount) return alert("Choose an account from the suggestions for both source and destination.");
+  if (fromAccount.id === toAccount.id) return alert("Choose two different accounts.");
   if (!Number.isFinite(amount) || amount <= 0) return alert("Enter an amount greater than zero.");
 
-  const payload = { from_account_id, to_account_id, amount, date, notes };
+  const payload = { from_account_id: fromAccount.id, to_account_id: toAccount.id, amount, date, notes };
 
   let error;
   if (id) {
@@ -307,8 +325,10 @@ async function handleSaveTransaction(e) {
 function openEditTxModal(tx) {
   document.getElementById("tx-modal-title").innerText = "Edit Transaction";
   document.getElementById("tx-id").value = tx.id;
-  document.getElementById("from-account").value = tx.from_account_id;
-  document.getElementById("to-account").value = tx.to_account_id;
+  const fromAccount = accounts.find(account => account.id === tx.from_account_id);
+  const toAccount = accounts.find(account => account.id === tx.to_account_id);
+  if (fromAccount) setAccountField("from", fromAccount);
+  if (toAccount) setAccountField("to", toAccount);
   document.getElementById("amount").value = tx.amount;
   document.getElementById("tx-date").value = tx.date;
   document.getElementById("tx-notes").value = tx.notes || "";

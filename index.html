@@ -102,12 +102,16 @@
 
         <div>
           <label class="block text-xs font-semibold text-slate-400 mb-1">From Account (Source)</label>
-          <select id="from-account" required class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-white outline-none focus:ring-2 focus:ring-emerald-500"></select>
+          <input id="from-account" type="text" list="from-account-options" autocomplete="off" placeholder="Start typing an account name" required class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-white outline-none focus:ring-2 focus:ring-emerald-500">
+          <input id="from-account-id" type="hidden">
+          <datalist id="from-account-options"></datalist>
         </div>
 
         <div>
           <label class="block text-xs font-semibold text-slate-400 mb-1">To Account (Destination)</label>
-          <select id="to-account" required class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-white outline-none focus:ring-2 focus:ring-emerald-500"></select>
+          <input id="to-account" type="text" list="to-account-options" autocomplete="off" placeholder="Start typing an account name" required class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm text-white outline-none focus:ring-2 focus:ring-emerald-500">
+          <input id="to-account-id" type="hidden">
+          <datalist id="to-account-options"></datalist>
         </div>
 
         <div class="grid grid-cols-2 gap-3">

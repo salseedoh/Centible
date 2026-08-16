@@ -17,8 +17,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
   ["from", "to"].forEach(field => {
     const input = document.getElementById(`${field}-account`);
-    input.addEventListener("input", () => syncAccountField(field));
-    input.addEventListener("change", () => syncAccountField(field));
+    input.addEventListener("input", () => renderAccountSuggestions(field));
+    input.addEventListener("focus", () => renderAccountSuggestions(field));
+    input.addEventListener("blur", () => window.setTimeout(() => hideAccountSuggestions(field), 150));
   });
 
   // Check if user is logged in
@@ -92,11 +93,40 @@ function findAccountByLabel(value) {
 function setAccountField(field, account) {
   document.getElementById(`${field}-account`).value = formatAccountDisplay(account);
   document.getElementById(`${field}-account-id`).value = account.id;
+  hideAccountSuggestions(field);
 }
 
-function syncAccountField(field) {
-  const account = findAccountByLabel(document.getElementById(`${field}-account`).value);
-  document.getElementById(`${field}-account-id`).value = account ? account.id : "";
+function hideAccountSuggestions(field) {
+  const suggestions = document.getElementById(`${field}-account-suggestions`);
+  suggestions.classList.add("hidden");
+  suggestions.innerHTML = "";
+}
+
+function renderAccountSuggestions(field) {
+  const input = document.getElementById(`${field}-account`);
+  const suggestions = document.getElementById(`${field}-account-suggestions`);
+  const query = input.value.trim().toLowerCase();
+
+  suggestions.innerHTML = "";
+  if (!query) return hideAccountSuggestions(field);
+
+  const matches = accounts.filter(account => formatAccountDisplay(account).toLowerCase().includes(query)).slice(0, 8);
+  if (!matches.length) return hideAccountSuggestions(field);
+
+  matches.forEach(account => {
+    const option = document.createElement("button");
+    option.type = "button";
+    option.className = "block w-full px-3 py-3 text-left text-sm text-slate-100 hover:bg-slate-700 active:bg-slate-600 border-b border-slate-700 last:border-0";
+    option.textContent = formatAccountDisplay(account);
+    option.addEventListener("pointerdown", event => {
+      event.preventDefault();
+      setAccountField(field, account);
+      input.focus();
+    });
+    suggestions.appendChild(option);
+  });
+
+  suggestions.classList.remove("hidden");
 }
 
 // Load Accounts into dropdowns & view
@@ -105,20 +135,6 @@ async function loadAccounts() {
   if (error) return console.error(error);
   
   accounts = data;
-  const fromOptions = document.getElementById("from-account-options");
-  const toOptions = document.getElementById("to-account-options");
-
-  fromOptions.innerHTML = "";
-  toOptions.innerHTML = "";
-
-  accounts.forEach(acc => {
-    const label = formatAccountDisplay(acc);
-    const fromOption = new Option(label);
-    const toOption = new Option(label);
-    fromOptions.appendChild(fromOption);
-    toOptions.appendChild(toOption);
-  });
-
   renderAccountManageList();
 }
 

@@ -492,7 +492,7 @@ function handleExportSubmit(e) {
 
     // Smart Sign Adjustment
     const rawAmount = Math.abs(Number(tx.amount));
-    const adjustedAmount = (fromType === 'liability') ? -rawAmount : rawAmount;
+    const adjustedAmount = (fromType === 'liability' || fromType === 'income') ? -rawAmount : rawAmount;
 
     return [
       escape(formattedDate),
